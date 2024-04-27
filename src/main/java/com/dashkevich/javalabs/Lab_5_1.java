@@ -138,7 +138,26 @@ public class Lab_5_1 {
             }
         }, 0, 1000);
 
-        Thread clientQueueThread = new Thread(() -> {
+        Thread clientQueueThread = getClientQueueThread();
+
+        List<Thread> workerThreads = new ArrayList<>();
+        for (int i = 0; i < workersCount; i++) {
+            // Поток для одного работника проката
+            Thread workerThread = getWorkerThread(i);
+            workerThread.start();
+            workerThreads.add(workerThread);
+        }
+        clientQueueThread.start();
+        clientQueueThread.join();
+        for (Thread workerThread : workerThreads) {
+            workerThread.join();
+        }
+
+        logStat();
+    }
+
+    private static Thread getClientQueueThread() {
+        return new Thread(() -> {
             try {
                 for (int i = 0; i < clientsCount; i++) {
                     Thread.sleep(clientIntervalTime);
@@ -158,66 +177,54 @@ public class Lab_5_1 {
                 throw new RuntimeException(e);
             }
         });
+    }
 
-        List<Thread> workerThreads = new ArrayList<>();
-        for (int i = 0; i < workersCount; i++) {
-            // Поток дял одного работника проката
-            int finalI = i;
-            Thread workerThread = new Thread(() -> {
-                try {
-                    while (true) {
-                        if (servedClients + leftClients == clientsCount) {
-                            System.out.println();
-                            log("Работник " + finalI + " закончил работу");
-                            return;
-                        }
-                        Client client;
-                        synchronized (clientQueue) {
-                            // Если нет клиента, ждём
-                            if (clientQueue.isEmpty()) {
-                                continue;
-                            }
-                            // Если нет лыж, ждём, пока вернут
-                            if (!processSkisOperation(SkisOperation.ISSUE)) {
-                                continue;
-                            }
-                            // Если есть лыжи, но нет клиента, ждём нового клиента, лыжи кладём на место
-                            client = processQueueOperation(QueueOperation.POP, null);
-                            if (client == null) {
-                                processSkisOperation(SkisOperation.RETURN);
-                                continue;
-                            }
-                        }
-                        log("Работник " + finalI + " обслуживает клиента " + client);
-                        Thread.sleep(serveTime);
-
-                        log("Клиент " + client + " пошёл кататься");
-                        new Thread(() -> {
-                            try {
-                                Thread.sleep(skiingTime);
-                                // Клиент покатался, возвращает лыжи
-                                processSkisOperation(SkisOperation.RETURN);
-                                servedClients++;
-                                log("Клиент " + client + " закончил кататься");
-                            } catch (InterruptedException e) {
-                                throw new RuntimeException(e);
-                            }
-                        }).start();
+    private static Thread getWorkerThread(int workerNumber) {
+        return new Thread(() -> {
+            try {
+                while (true) {
+                    if (servedClients + leftClients == clientsCount) {
+                        System.out.println();
+                        log("Работник " + workerNumber + " закончил работу");
+                        return;
                     }
-                } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
-                }
-            });
-            workerThread.start();
-            workerThreads.add(workerThread);
-        }
-        clientQueueThread.start();
-        clientQueueThread.join();
-        for (Thread workerThread : workerThreads) {
-            workerThread.join();
-        }
+                    Client client;
+                    synchronized (clientQueue) {
+                        // Если нет клиента, ждём
+                        if (clientQueue.isEmpty()) {
+                            continue;
+                        }
+                        // Если нет лыж, ждём, пока вернут
+                        if (!processSkisOperation(SkisOperation.ISSUE)) {
+                            continue;
+                        }
+                        // Если есть лыжи, но нет клиента, ждём нового клиента, лыжи кладём на место
+                        client = processQueueOperation(QueueOperation.POP, null);
+                        if (client == null) {
+                            processSkisOperation(SkisOperation.RETURN);
+                            continue;
+                        }
+                    }
+                    log("Работник " + workerNumber + " обслуживает клиента " + client);
+                    Thread.sleep(serveTime);
 
-        logStat();
+                    log("Клиент " + client + " пошёл кататься");
+                    new Thread(() -> {
+                        try {
+                            Thread.sleep(skiingTime);
+                            // Клиент покатался, возвращает лыжи
+                            processSkisOperation(SkisOperation.RETURN);
+                            servedClients++;
+                            log("Клиент " + client + " закончил кататься");
+                        } catch (InterruptedException e) {
+                            throw new RuntimeException(e);
+                        }
+                    }).start();
+                }
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        });
     }
 
     /**
