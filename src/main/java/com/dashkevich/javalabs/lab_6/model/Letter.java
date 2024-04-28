@@ -1,4 +1,4 @@
-package com.dashkevich.javalabs.lab_6;
+package com.dashkevich.javalabs.lab_6.model;
 
 import java.time.LocalDateTime;
 
