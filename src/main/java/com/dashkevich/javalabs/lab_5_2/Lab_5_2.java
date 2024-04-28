@@ -1,4 +1,4 @@
-package com.dashkevich.javalabs;
+package com.dashkevich.javalabs.lab_5_2;
 
 import java.util.Random;
 import java.util.concurrent.BlockingQueue;
@@ -75,6 +75,4 @@ public class Lab_5_2 {
             }
         }).start();
     }
-
-    private record Car(){}
 }

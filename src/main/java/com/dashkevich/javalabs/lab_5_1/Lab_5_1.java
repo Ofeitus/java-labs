@@ -1,4 +1,4 @@
-package com.dashkevich.javalabs;
+package com.dashkevich.javalabs.lab_5_1;
 
 import java.util.*;
 
@@ -74,7 +74,7 @@ public class Lab_5_1 {
         return switch (queueOperation) {
             case PUSH -> {
                 // Если пенсионер, добавить в начало очереди
-                if (newClient.pensioner) {
+                if (newClient.pensioner()) {
                     if (clientQueue.offerFirst(newClient)) {
                         log("Клиент " + newClient + " встал в начало очереди");
                     }
@@ -90,7 +90,7 @@ public class Lab_5_1 {
                 Client client = clientQueue.peekLast();
                 if (clientQueue.pollLast() != null) {
                     leftClients++;
-                    log("Клиент " + client.number + " ушёл из очереди");
+                    log("Клиент " + client.number() + " ушёл из очереди");
                 }
                 yield client;
             }
@@ -225,46 +225,5 @@ public class Lab_5_1 {
                 throw new RuntimeException(e);
             }
         });
-    }
-
-    /**
-     * Клиент проката
-     */
-    private record Client(int number, boolean pensioner) {
-
-        @Override
-        public String toString() {
-            return number + (pensioner ? " (пенсионер)" : "");
-        }
-    }
-
-    private enum QueueOperation {
-        /**
-         * Добавить в конец очереди
-         */
-        PUSH,
-
-        /**
-         * Забрать из начала очереди
-         */
-        POP,
-
-        /**
-         * Забрать из конца очереди
-         */
-        POP_FROM_END
-    }
-
-    private enum SkisOperation {
-
-        /**
-         * Выдать лыжи
-         */
-        ISSUE,
-
-        /**
-         * Вернуть лыжи
-         */
-        RETURN
     }
 }
