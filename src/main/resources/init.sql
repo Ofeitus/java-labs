@@ -29,7 +29,7 @@ ENGINE = InnoDB;
 -- Table `letters`.`letter`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `letters`.`letter` (
-  `id` INT NOT NULL,
+  `id` INT NOT NULL AUTO_INCREMENT,
   `sender` INT NOT NULL,
   `recipient` INT NOT NULL,
   `subject` TEXT NULL,

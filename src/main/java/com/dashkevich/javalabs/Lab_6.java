@@ -23,17 +23,39 @@ public class Lab_6 {
         dao.initTestData();
 
         User shortestLettersUser = dao.getShortestLettersUser();
-        logger.info("Пользователь, длина писем которого наименьшая - " + shortestLettersUser);
+        logger.info("Пользователь, длина писем которого наименьшая - " + shortestLettersUser + "\n");
 
-        List<UserLettersStatProjection> usersStats = dao.getUsersLettersStat();
+        List<UserLettersStatProjection> usersStats = dao.getUsersLettersStats();
+        StringBuilder sb = new StringBuilder();
+        sb.append("Информация о пользователях, а также количестве полученных и отправленных ими письмах:\n");
         for (UserLettersStatProjection userStat : usersStats) {
-            logger.info(userStat.toString());
+            sb.append(userStat).append("\n");
         }
+        logger.info(sb.toString());
+
+        List<User> users = dao.getUsersReceivedSubject("Тема 1");
+        sb = new StringBuilder();
+        sb.append("Пользователи, которые получили хотя бы одно сообщение с темой \"Тема 1\":\n");
+        for (User user : users) {
+            sb.append(user).append("\n");
+        }
+        logger.info(sb.toString());
+
+        users = dao.getUsersNotReceivedSubject("Тема 1");
+        sb = new StringBuilder();
+        sb.append("Пользователи, которые не получали сообщения с темой \"Тема 1\":\n");
+        for (User user : users) {
+            sb.append(user).append("\n");
+        }
+        logger.info(sb.toString());
+
+        int lettersCount = dao.sendLetterToAllUsers(3, "Новая тема");
+        logger.info("Писем отправлено: " + lettersCount + "\n");
 
         dao.closeConnection();
     }
 
-    private record User(Integer id, String fio, LocalDate dateOfBirth){
+    private record User(Integer id, String fio, LocalDate dateOfBirth) {
         @Override
         public String toString() {
             return "User{" +
@@ -51,9 +73,9 @@ public class Lab_6 {
             String subject,
             String body,
             LocalDateTime dateOfSending
-    ){}
+    ) {}
 
-    private record UserLettersStatProjection(User user, Integer lettersSent, Integer lettersReceived){
+    private record UserLettersStatProjection(User user, Integer lettersSent, Integer lettersReceived) {
         @Override
         public String toString() {
             return "UserLettersStatProjection{" +
@@ -156,7 +178,7 @@ public class Lab_6 {
 
             con.commit();
             con.setAutoCommit(true);
-            logger.info("Тестовые данные записаны");
+            logger.info("Тестовые данные записаны\n");
         }
 
         /**
@@ -176,9 +198,8 @@ public class Lab_6 {
             }
             ResultSet rs = ps.executeQuery();
             if (rs.next()) {
-                return new User(rs.getInt(1), rs.getString(2), rs.getDate(3).toLocalDate());
+                return mapUser(rs);
             } else {
-                logger.warn("Пользователей не найдено");
                 return null;
             }
         }
@@ -187,7 +208,7 @@ public class Lab_6 {
          * Информация о пользователях, а также количестве
          * полученных и отправленных ими письмах
          */
-        public List<UserLettersStatProjection> getUsersLettersStat() throws SQLException {
+        public List<UserLettersStatProjection> getUsersLettersStats() throws SQLException {
             PreparedStatement ps = con.prepareStatement("""
                     SELECT u.*, sum(if(u.id = l.sender, 1, 0)), sum(if(u.id = l.recipient, 1, 0))
                     FROM user u
@@ -202,12 +223,94 @@ public class Lab_6 {
             List<UserLettersStatProjection> result = new ArrayList<>();
             while (rs.next()) {
                 result.add(new UserLettersStatProjection(
-                        new User(rs.getInt(1), rs.getString(2), rs.getDate(3).toLocalDate()),
+                        mapUser(rs),
                         rs.getInt(4),
                         rs.getInt(5)
                 ));
             }
             return result;
+        }
+
+        /**
+         * Пользователи, которые получили хотя бы одно сообщение с заданной темой.
+         */
+        public List<User> getUsersReceivedSubject(String subject) throws SQLException {
+            PreparedStatement ps = con.prepareStatement("""
+                    SELECT u.*, l.subject
+                    FROM user u
+                    JOIN letter l ON u.id = l.recipient
+                    GROUP BY u.id
+                    HAVING l.subject = ?;"""
+            );
+            ps.setObject(1, subject);
+            if (showSql) {
+                logger.info(ps.toString());
+            }
+            return mapUsers(ps.executeQuery());
+        }
+
+        /**
+         * Пользователи, которые не получали сообщения с заданной темой.
+         */
+        public List<User> getUsersNotReceivedSubject(String subject) throws SQLException {
+            PreparedStatement ps = con.prepareStatement("""
+                    SELECT u.*, sum(if(l.subject = ?, 1, 0))
+                    FROM user u
+                    LEFT JOIN letter l ON u.id = l.recipient
+                    GROUP BY u.id
+                    HAVING sum(if(l.subject = ?, 1, 0)) = 0;"""
+            );
+            ps.setObject(1, subject);
+            ps.setObject(2, subject);
+            if (showSql) {
+                logger.info(ps.toString());
+            }
+            return mapUsers(ps.executeQuery());
+        }
+
+        /**
+         * Направить письмо заданного человека с заданной темой всем адресатам.
+         *
+         * @return кол-во отправленных писем
+         */
+        public int sendLetterToAllUsers(Integer userId, String subject) throws SQLException {
+            PreparedStatement ps = con.prepareStatement("SELECT * FROM user WHERE id <> ?;");
+            ps.setObject(1, userId);
+            if (showSql) {
+                logger.info(ps.toString());
+            }
+            List<User> anotherUsers = mapUsers(ps.executeQuery());
+
+            StringBuilder sb = new StringBuilder();
+            sb.append("INSERT INTO `letters`.`letter` (`sender`, `recipient`, `subject`, `date_of_sending`) VALUES");
+            sb.append("\n(?, ?, ?, ?),".repeat(anotherUsers.size()));
+            sb.deleteCharAt(sb.length() - 1);
+            sb.append(";");
+
+            ps = con.prepareStatement(sb.toString());
+            for (int i = 0; i < anotherUsers.size(); i++) {
+                ps.setObject(i * 4 + 1, userId);
+                ps.setObject(i * 4 + 2, anotherUsers.get(i).id);
+                ps.setObject(i * 4 + 3, subject);
+                ps.setObject(i * 4 + 4, LocalDateTime.now());
+            }
+            if (showSql) {
+                logger.info(ps.toString());
+            }
+
+            return ps.executeUpdate();
+        }
+
+        private List<User> mapUsers(ResultSet rs) throws SQLException {
+            List<User> result = new ArrayList<>();
+            while (rs.next()) {
+                result.add(mapUser(rs));
+            }
+            return result;
+        }
+
+        private User mapUser(ResultSet rs) throws SQLException {
+            return new User(rs.getInt(1), rs.getString(2), rs.getDate(3).toLocalDate());
         }
     }
 }
