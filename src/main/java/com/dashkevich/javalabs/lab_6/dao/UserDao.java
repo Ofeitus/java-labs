@@ -111,11 +111,11 @@ public class UserDao {
      */
     public List<User> getUsersReceivedSubject(String subject) throws SQLException {
         PreparedStatement ps = con.prepareStatement("""
-                    SELECT u.*, l.subject
+                    SELECT u.*
                     FROM user u
                     JOIN letter l ON u.id = l.recipient
+                    WHERE l.subject = ?
                     GROUP BY u.id
-                    HAVING l.subject = ?
                     ORDER BY u.id;"""
         );
         ps.setObject(1, subject);

@@ -6,6 +6,7 @@ import com.dashkevich.javalabs.lab_6.model.User;
 import com.dashkevich.javalabs.lab_6.projection.UserLettersStatProjection;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.*;
 
 import java.io.IOException;
@@ -14,6 +15,7 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Properties;
+import java.util.concurrent.TimeUnit;
 
 import static com.dashkevich.javalabs.lab_6.Lab_6.testLetters;
 import static com.dashkevich.javalabs.lab_6.Lab_6.testUsers;
@@ -29,7 +31,6 @@ public class DaoTest {
 
 	@BeforeAll
 	public static void beforeAll() throws ClassNotFoundException, SQLException {
-
 		try {
 			props.load(UserDao.class.getClassLoader().getResourceAsStream("application.properties"));
 		} catch (IOException e) {
@@ -101,6 +102,14 @@ public class DaoTest {
 	}
 
 	@Test
+	public void getUsersReceivedSubject3() throws SQLException {
+		String subject = "Тема 3";
+		List<User> actual = userDao.getUsersReceivedSubject(subject);
+
+		assertEquals(testUsers.get(1), actual.getFirst());
+	}
+
+	@Test
 	public void getUsersNotReceivedSubject() throws SQLException {
 		String subject = "Тема 1";
 		List<User> actual = userDao.getUsersNotReceivedSubject(subject);
@@ -108,6 +117,24 @@ public class DaoTest {
 		assertEquals(testUsers.getLast(), actual.getFirst());
 	}
 
+	/**
+	 * Метод игнорируется
+	 */
+	@Disabled
+	@Test
+	public void getUsersNotReceivedSubject2() throws SQLException {
+		String subject = "Тема 2";
+		List<User> actual = userDao.getUsersNotReceivedSubject(subject);
+
+		assertEquals(testUsers.get(1), actual.get(0));
+		assertEquals(testUsers.get(2), actual.get(1));
+	}
+
+	/**
+	 * Таймаут - 50 миллисекунд
+	 * Тестируется взаимодействие двух dao классов
+	 */
+	@Timeout(value = 50, unit = TimeUnit.MILLISECONDS)
 	@Test
 	public void sendLetterToAllUsers() throws SQLException {
 		Integer userId = 3;
