@@ -33,11 +33,13 @@ public class Lab_5_2 {
                     // Случайное время до приезда
                     Thread.sleep(random.nextInt(carIntervalTime));
                     if (Math.random() < 0.5) {
-                        oneSideCars.offer(new Car());
-                        System.out.println("С одной стороны прибыла машина (с одной: " + oneSideCars.size() + ", с другой: " + anotherSideCars.size() + ")");
+                        if (oneSideCars.offer(new Car())) {
+                            System.out.println("С одной стороны прибыла машина (с одной: " + oneSideCars.size() + ", с другой: " + anotherSideCars.size() + ")");
+                        }
                     } else {
-                        anotherSideCars.offer(new Car());
-                        System.out.println("С другой стороны прибыла машина (с одной: " + oneSideCars.size() + ", с другой: " + anotherSideCars.size() + ")");
+                        if (anotherSideCars.offer(new Car())) {
+                            System.out.println("С другой стороны прибыла машина (с одной: " + oneSideCars.size() + ", с другой: " + anotherSideCars.size() + ")");
+                        }
                     }
                 } catch (InterruptedException e) {
                     throw new RuntimeException(e);
@@ -74,5 +76,5 @@ public class Lab_5_2 {
         }).start();
     }
 
-    private static record Car(){}
+    private record Car(){}
 }
